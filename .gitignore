@@ -72,3 +72,6 @@ ehthumbs.db
 .idea/
 .vscode/
 .vs/
+
+# Videos
+*.mp4

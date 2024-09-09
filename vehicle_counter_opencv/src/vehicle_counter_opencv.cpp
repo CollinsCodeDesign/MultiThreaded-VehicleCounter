@@ -3,6 +3,8 @@
 #include <iostream>
 #include <fstream>
 #include <unordered_map>
+#include "modules/config.h"
+#include <string>
 
 
 using namespace std;
@@ -47,12 +49,9 @@ void resetFile(fstream& file) {
 	file.seekg(0); // Return to the beginning of the file
 }
 int countVehicles() {
-	// Config config();
-	//if (!config.loadConfig("config.ini")) {
-	//	return -1;
-	//}
-	//int movementThreshold = config.get<int>("movement_threshold", 6000);
-	cv::VideoCapture video("assets\\count_vehicles.mp4"); // Replace with your video file path
+	Config config("src\\config\\config.ini");
+	std::cout << "movement_threshold: " << config.getMovementThreshold() << std::endl;
+	cv::VideoCapture video(config.getLocalVideo()); // Replace with your video file path
 
 	// Check if video opened successfully
 	if (!video.isOpened()) {
@@ -77,7 +76,12 @@ int countVehicles() {
 	int newHeight = static_cast<int>(originalHeight * scaleFactor);
 
 	cv::Mat frame, resizedFrame, grayFrame, prevGrayFrame, diffFrame;
-	cv::Rect lane1DetectionBox(570, 650, 200, 20);
+	cv::Rect lane1DetectionBox(
+		config.getLane1DetectionBox()[0],
+		config.getLane1DetectionBox()[1],
+		config.getLane1DetectionBox()[2],
+		config.getLane1DetectionBox()[3]
+	);
 	int detectionCounter = 0;
 	bool lastFrameDetected = false;
 
@@ -104,7 +108,7 @@ int countVehicles() {
 		cv::Mat roi = diffFrame(lane1DetectionBox);
 		double movement = cv::sum(roi)[0]; // Sum of all pixel values in the ROI
 
-		if (movement > 5000) {
+		if (movement > config.getMovementThreshold()) {
 			if (!lastFrameDetected) {
 				detectionCounter++;
 			}
@@ -129,82 +133,17 @@ int countVehicles() {
 	}
 	video.release();
 	cv::destroyAllWindows();
+	return 0;
 }
-
-class Config {
-public:
-	std::unordered_map<std::string, std::string> configMap;
-
-	// Function to load the config file into the map
-	bool loadConfig(const std::string& filename) {
-		std::ifstream configInputFile(filename);
-		if (!configInputFile.is_open()) {
-			std::cerr << "Error: Could not open config file." << std::endl;
-			return false;
-		}
-
-		std::string line;
-		while (std::getline(configInputFile, line)) {
-			// Skip comments and empty lines
-			if (line.empty() || line[0] == '#') continue;
-
-			// Find the position of the '=' delimiter
-			size_t delimiterPos = line.find('=');
-			if (delimiterPos != std::string::npos) {
-				std::string key = line.substr(0, delimiterPos);
-				std::string value = line.substr(delimiterPos + 1);
-
-				// Trim any whitespace around the key and value (optional)
-				key = trim(key);
-				value = trim(value);
-
-				// Insert into the map
-				configMap[key] = value;
-			}
-		}
-
-		configInputFile.close();
-		return true;
-	}
-
-	// Function to get a config variable with a default value
-	template<typename T>
-	T get(const std::string& key, T defaultValue) {
-		if (configMap.find(key) != configMap.end()) {
-			std::istringstream ss(configMap[key]);
-			T value;
-			ss >> value;
-			return value;
-		}
-		return defaultValue;
-	}
-
-private:
-	// Helper function to trim whitespace (optional)
-	std::string trim(const std::string& str) {
-		size_t first = str.find_first_not_of(" \t");
-		size_t last = str.find_last_not_of(" \t");
-
-		return (first == std::string::npos || last == std::string::npos) ? "" : str.substr(first, last - first + 1); // substr(first index, length)
-	}
-};
-
-int main() {
-	Config config;
-
-	if (!config.loadConfig("src\\config\\config.ini")) {
-		return -1;
-	}
-
-	// Example of reading config variables into variables
-	std::string username = config.get<std::string>("username", "default_user");
+Config setConfigVars() {
+	Config config("src\\config\\config.ini");
+	std::string username = config.get(std::string("username"), std::string("default_user"));
 	int timeout = config.get<int>("timeout", 60);
 	bool debug = config.get<bool>("debug", false);
-
-	std::cout << "Username: " << username << std::endl;
-	std::cout << "Timeout: " << timeout << std::endl;
-	std::cout << "Debug: " << std::boolalpha << debug << std::endl;
-
+	return config;
+}
+int main() {
+	countVehicles();
 	return 0;
 }
 
