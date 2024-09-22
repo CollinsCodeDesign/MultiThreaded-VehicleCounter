@@ -1,0 +1,16 @@
+{
+  "movementThreshold": 6000,
+  "localVideo": "assets\\count_vehicles.mp4",
+  "lane1X": 570,
+  "lane1Y": 650,
+  "lane1Width": 200,
+  "lane1Height": 20,
+  "lane2X": 770,
+  "lane2Y": 650,
+  "lane2Width": 200,
+  "lane2Height": 20,
+  "lane3X": 970,
+  "lane3Y": 650,
+  "lane3Width": 200,
+  "lane3Height": 20
+}

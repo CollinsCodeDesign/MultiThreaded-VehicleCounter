@@ -1,52 +1,33 @@
 #pragma once
 
-#include <unordered_map>
 #include <string>
+#include <fstream>
+#include <iostream>
+#include <nlohmann/json.hpp>
 
-class Config {
+class JsonConfigLoader {
 private:
-	std::unordered_map<std::string, std::string> configMap;
-	int movementThreshold;
-	std::string localVideo;
-	std::vector<int> lane1DectionBox;
+	nlohmann::json configData; // JSON object to store configuration data
+
+	bool keyExists(const std::string& key) const;
 public:
 	// Constructor that takes a filename
-	Config(const std::string& filename);
-	int getMovementThreshold() const;
-	std::string getLocalVideo() const;
-	std::vector<int> getLane1DetectionBox() const;
+	JsonConfigLoader(const std::string& configFilePath);
+	bool loadConfig(const std::string& configFilePath);
 
-	// Function to load the configuration file
-	bool loadConfig(const std::string& filename);
+	// Method to get a configuration value as a string
+	std::string getStringValue(const std::string& key) const;
 
-	// Template function to get a value with a default if not found
-	template<typename T>
-	T get(const std::string& key, T defaultValue) const;
-	Config();
+	// Method to get a configuration value as an integer
+	int getIntValue(const std::string& key) const;
 
-	~Config();
+	// Method to get a configuration value as a boolean
+	bool getBoolValue(const std::string& key) const;
+
+	// Method to get a configuration value as a double
+	double getDoubleValue(const std::string& key) const;
+	JsonConfigLoader();
+
+	~JsonConfigLoader();
 };
-
-/**
- * @brief Retrieves a value from the configuration map.
- *
- * This template method works with types that std::stringstream can handle,
- * such as int or double. If the key is not found in the map, it returns
- * the provided default value.
- *
- * @tparam T Type of the value to retrieve.
- * @param key The key to search for in the configuration map.
- * @param defaultValue The default value to return if the key is not found.
- * @return The value corresponding to the key, or defaultValue if not found.
- */
-template<typename T>
-T Config::get(const std::string& key, T defaultValue) const {
-	if (configMap.find(key) != configMap.end()) {
-		std::stringstream ss(configMap.at(key));
-		T value;
-		ss >> value;
-		return value;
-	}
-	return defaultValue;
-}
 

@@ -28,7 +28,7 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="src\config\config.ini">
+    <None Include="src\config\config.json">
       <Filter>Source Files</Filter>
     </None>
   </ItemGroup>

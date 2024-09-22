@@ -5,6 +5,7 @@
 #include <unordered_map>
 #include "modules/config.h"
 #include <string>
+#include <libpq-fe.h>
 
 
 using namespace std;
@@ -48,10 +49,19 @@ void resetFile(fstream& file) {
 	file.clear(); // Clear the EOF flag
 	file.seekg(0); // Return to the beginning of the file
 }
+class VehicleCounter {
+private:
+	cv::Rect _detectBox;
+	int _counter;
+	double _movement;
+	bool _lastFrameDetected;
+public:
+	VehicleCounter(cv::Rect box, int movement) : _detectBox(box), _counter(0), _movement(movement), _lastFrameDetected(false) {}
+
+};
 int countVehicles() {
-	Config config("src\\config\\config.ini");
-	std::cout << "movement_threshold: " << config.getMovementThreshold() << std::endl;
-	cv::VideoCapture video(config.getLocalVideo()); // Replace with your video file path
+	JsonConfigLoader config("src\\config\\config.json");
+	cv::VideoCapture video(config.getStringValue("localVideo")); // Replace with your video file path
 
 	// Check if video opened successfully
 	if (!video.isOpened()) {
@@ -76,13 +86,28 @@ int countVehicles() {
 	int newHeight = static_cast<int>(originalHeight * scaleFactor);
 
 	cv::Mat frame, resizedFrame, grayFrame, prevGrayFrame, diffFrame;
+	// Add a way to add multiple boxes
 	cv::Rect lane1DetectionBox(
-		config.getLane1DetectionBox()[0],
-		config.getLane1DetectionBox()[1],
-		config.getLane1DetectionBox()[2],
-		config.getLane1DetectionBox()[3]
+		config.getIntValue("lane1X"),
+		config.getIntValue("lane1Y"),
+		config.getIntValue("lane1Width"),
+		config.getIntValue("lane1Height")
 	);
-	int detectionCounter = 0;
+
+	cv::Rect lane2DetectionBox(
+		config.getIntValue("lane2X"),
+		config.getIntValue("lane2Y"),
+		config.getIntValue("lane2Width"),
+		config.getIntValue("lane2Height")
+	);
+
+	cv::Rect lane3DetectionBox(
+		config.getIntValue("lane3X"),
+		config.getIntValue("lane3Y"),
+		config.getIntValue("lane3Width"),
+		config.getIntValue("lane3Height")
+	);
+	int lane1DetectionCounter = 0;
 	bool lastFrameDetected = false;
 
 	while (true) {
@@ -98,6 +123,7 @@ int countVehicles() {
 		cv::resize(frame, resizedFrame, cv::Size(newWidth, newHeight));
 
 		// Convert the frame to grayscale
+		// Add pipeline feature that makes it configurable 
 		cv::cvtColor(resizedFrame, grayFrame, cv::COLOR_BGR2GRAY);
 		if (prevGrayFrame.empty()) {
 			grayFrame.copyTo(prevGrayFrame);
@@ -105,24 +131,28 @@ int countVehicles() {
 		}
 		cv::absdiff(grayFrame, prevGrayFrame, diffFrame);
 		cv::threshold(diffFrame, diffFrame, 30, 255, cv::THRESH_BINARY);
-		cv::Mat roi = diffFrame(lane1DetectionBox);
-		double movement = cv::sum(roi)[0]; // Sum of all pixel values in the ROI
+		cv::Mat lane1Roi = diffFrame(lane1DetectionBox);
+		cv::Mat lane2Roi = diffFrame(lane2DetectionBox);
+		cv::Mat lane3Roi = diffFrame(lane3DetectionBox);
+		// Sum of all pixel values in the ROI
+		double lane1Movement = cv::sum(lane1Roi)[0];
+		double lane2Movement = cv::sum(lane2Roi)[0];
+		double lane3Movement = cv::sum(lane3Roi)[0];
 
-		if (movement > config.getMovementThreshold()) {
+		if (lane1Movement > config.getIntValue("movementThreshold")) {
 			if (!lastFrameDetected) {
-				detectionCounter++;
+				lane1DetectionCounter++;
 			}
 			lastFrameDetected = true;
-			cout << "Movement detected in the box!" << endl;
 			cv::rectangle(resizedFrame, lane1DetectionBox, cv::Scalar(0, 0, 255), 2); // Change color if movement is detected
 		}
 		else {
 			lastFrameDetected = false;
 			cv::rectangle(resizedFrame, lane1DetectionBox, cv::Scalar(0, 255, 0), 2); // Green if no movement
 		}
-		std::string text = "Count: " + std::to_string(detectionCounter);
+		std::string text = "Count: " + std::to_string(lane1DetectionCounter);
 		cv::putText(resizedFrame, text, cv::Point(lane1DetectionBox.x, lane1DetectionBox.y - 10),
-			cv::FONT_HERSHEY_SIMPLEX, 1, cv::Scalar(0, 255, 0), 2);
+			cv::FONT_HERSHEY_SIMPLEX, 0.5, cv::Scalar(0, 255, 0), 2);
 		cv::imshow("Video with Movement Detection", resizedFrame);
 
 		// Wait for 25 ms and break the loop if the user presses a key
@@ -135,49 +165,37 @@ int countVehicles() {
 	cv::destroyAllWindows();
 	return 0;
 }
-Config setConfigVars() {
-	Config config("src\\config\\config.ini");
-	std::string username = config.get(std::string("username"), std::string("default_user"));
-	int timeout = config.get<int>("timeout", 60);
-	bool debug = config.get<bool>("debug", false);
-	return config;
-}
+
 int main() {
+	// Add a more secure way of logging into the database
+	const char* conninfo = "dbname=vehicle_counter user=postgres password=Vann3299 hostaddr=127.0.0.1 port=5432";
+	PGconn* conn = PQconnectdb(conninfo);
+	if (PQstatus(conn) != CONNECTION_OK) {
+		std::cerr << "Connection to database failed: " << PQerrorMessage(conn) << std::endl;
+		PQfinish(conn);
+		return 1;
+	}
+	std::cout << "Connected to database successfully!" << std::endl;
+
+	// Execute an SQL query
+	// Create table for storing count alerts
+	PGresult* res = PQexec(conn, "SELECT version();");
+
+	// Check query result status
+	if (PQresultStatus(res) != PGRES_TUPLES_OK) {
+		std::cerr << "Query failed: " << PQerrorMessage(conn) << std::endl;
+		PQclear(res);
+		PQfinish(conn);
+		return 1;
+	}
+
+	// Print the result of the query (PostgreSQL version)
+	std::cout << "PostgreSQL version: " << PQgetvalue(res, 0, 0) << std::endl;
+
+	// Clean up
+	PQclear(res);
+	PQfinish(conn);
+
 	countVehicles();
 	return 0;
 }
-
-//int main() {
-//	// countVehicles();
-//
-//	// init object and set to read
-//	std::fstream configInputFile("src\\config\\config.ini");
-//	// check if file object is open
-//	if (!configInputFile.is_open()) {
-//		cerr << "Error opening file for reading." << endl;
-//	}
-//	// create string data type for scratch pad to store each line temporarily 
-//	string line;
-//	while (getline(configInputFile, line)) {
-//		cout << line << endl;
-//	}
-//
-//	resetFile(configInputFile);
-//	string word;
-//	if (configInputFile >> word) {
-//		cout << "Read operation successful" << endl;
-//	}
-//	else {
-//		cout << "Read operation failed" << endl;
-//	}
-//	while (configInputFile >> word) {
-//		cout << word << endl;
-//	}
-//
-//	configInputFile.close();
-//	std::ofstream outputFile("output.txt");
-//
-//
-//
-//	return 0;
-//}

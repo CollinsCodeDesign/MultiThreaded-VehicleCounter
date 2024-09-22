@@ -1,57 +1,74 @@
 #include "config.h"
 #include <iostream>
 #include <fstream>
-#include <sstream>
-#include <string>
 
-Config::Config(const std::string& filename) {
-	loadConfig(filename);
-	movementThreshold = get<int>("movement_threshold", 5000);
-	localVideo = get<std::string>("local_video", std::string("error"));
-	lane1DectionBox.push_back(get<int>("lane1_x", 0));
-	lane1DectionBox.push_back(get<int>("lane1_y", 0));
-	lane1DectionBox.push_back(get<int>("lane1_width", 0));
-	lane1DectionBox.push_back(get<int>("lane1_height", 0));
+JsonConfigLoader::JsonConfigLoader(const std::string& configFilePath) {
+	if (!loadConfig(configFilePath)) {
+		std::cerr << "Failed to load configuration file: " << configFilePath << std::endl;
+	}
 }
 
-Config::Config()
+JsonConfigLoader::JsonConfigLoader()
 {
 }
 
-Config::~Config() {
+JsonConfigLoader::~JsonConfigLoader() {
 }
 
-bool Config::loadConfig(const std::string& filename) {
-	std::ifstream configFile(filename);
+bool JsonConfigLoader::loadConfig(const std::string& configFilePath) {
+	std::ifstream configFile(configFilePath);
+
 	if (!configFile.is_open()) {
-		std::cerr << "Error: Could not open config file." << std::endl;
+		std::cerr << "Could not open config file: " << configFilePath << std::endl;
 		return false;
 	}
 
-	std::string line;
-	while (getline(configFile, line)) {
-		if (line.empty() || line[0] == '#') continue;
-
-		size_t delimiterPos = line.find('=');
-		if (delimiterPos != std::string::npos) {
-			std::string key = line.substr(0, delimiterPos);
-			std::string value = line.substr(delimiterPos + 1);
-			configMap[key] = value;
-		}
+	try {
+		configFile >> configData;
+	}
+	catch (nlohmann::json::parse_error& e) {
+		std::cerr << "JSON parsing error: " << e.what() << std::endl;
+		return false;
 	}
 
-	configFile.close();
 	return true;
 }
 
-int Config::getMovementThreshold() const {
-	return movementThreshold;
+// Get a string value from the configuration
+std::string JsonConfigLoader::getStringValue(const std::string& key) const {
+	if (keyExists(key)) {
+		return configData[key].get<std::string>();
+	}
+	return "";
 }
-std::string Config::getLocalVideo() const {
-	return localVideo;
+
+// Get an integer value from the configuration
+int JsonConfigLoader::getIntValue(const std::string& key) const {
+	if (keyExists(key)) {
+		return configData[key].get<int>();
+	}
+	return 0;
 }
-std::vector<int> Config::getLane1DetectionBox() const {
-	return lane1DectionBox;
+
+// Get a boolean value from the configuration
+bool JsonConfigLoader::getBoolValue(const std::string& key) const {
+	if (keyExists(key)) {
+		return configData[key].get<bool>();
+	}
+	return false;
+}
+
+// Get a double value from the configuration
+double JsonConfigLoader::getDoubleValue(const std::string& key) const {
+	if (keyExists(key)) {
+		return configData[key].get<double>();
+	}
+	return 0.0;
+}
+
+// Check if a key exists in the configuration
+bool JsonConfigLoader::keyExists(const std::string& key) const {
+	return configData.contains(key);
 }
 
 
