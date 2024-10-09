@@ -12,5 +12,10 @@
   "lane3X": 970,
   "lane3Y": 650,
   "lane3Width": 200,
-  "lane3Height": 20
+  "lane3Height": 20,
+  "dbname": "vehicle_counter",
+  "dbUser": "postgres",
+  "dbHost": "127.0.0.1",
+  "dbPort": 5432,
+  "dbPassword": "Vann3299"
 }

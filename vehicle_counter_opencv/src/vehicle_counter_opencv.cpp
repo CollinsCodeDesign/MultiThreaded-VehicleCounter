@@ -168,8 +168,15 @@ int countVehicles() {
 
 int main() {
 	// Add a more secure way of logging into the database
-	const char* conninfo = "dbname=vehicle_counter user=postgres password=Vann3299 hostaddr=127.0.0.1 port=5432";
-	PGconn* conn = PQconnectdb(conninfo);
+	JsonConfigLoader config("src\\config\\config.json");
+	const std::string dbname = config.getStringValue("dbname");
+	const std::string username = config.getStringValue("dbUser");
+	const std::string password = config.getStringValue("dbPassword");
+	const std::string dbhost = config.getStringValue("dbHost");
+	const int port = config.getIntValue("dbPort");
+	std::stringstream connectionString;
+	connectionString << "dbname=" << dbname << " user=" << username << " password=" << password << " hostaddr=" << dbhost << " port=" << port;
+	PGconn* conn = PQconnectdb(connectionString.str().c_str());
 	if (PQstatus(conn) != CONNECTION_OK) {
 		std::cerr << "Connection to database failed: " << PQerrorMessage(conn) << std::endl;
 		PQfinish(conn);
