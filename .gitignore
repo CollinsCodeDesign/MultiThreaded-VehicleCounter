@@ -41,6 +41,7 @@ ipch/
 *.idb
 *.pgd
 *.pgc
+*.sln
 
 # IntelliSense
 *.opensdf
