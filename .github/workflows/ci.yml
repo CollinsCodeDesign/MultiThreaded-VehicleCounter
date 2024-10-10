@@ -13,19 +13,28 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v3
 
-    - name: Set up OpenCV
+    - name: Install dependencies (vcpkg)
       run: |
         sudo apt update
-        sudo apt install -y libopencv-dev
+        sudo apt install -y curl zip unzip tar
+        git clone https://github.com/microsoft/vcpkg.git
+        ./vcpkg/bootstrap-vcpkg.sh
+        ./vcpkg/vcpkg install nlohmann-json opencv4
+    
+    - name: Set up OpenCV
+      run: sudo apt install -y libopencv-dev  # Ensure this is included for OpenCV installation
 
-    - name: Compile the application
+    - name: Configure the project with CMake
       run: |
-        g++ -std=c++11 -I/usr/include/opencv4 -L/usr/lib/x86_64-linux-gnu -lopencv_core -lopencv_imgproc -lopencv_highgui -lopencv_videoio vehicle_counter_opencv/src/vehicle_counter_opencv.cpp -o vehicle_counter
+        cmake -B build -S . -DCMAKE_TOOLCHAIN_FILE=./vcpkg/scripts/buildsystems/vcpkg.cmake
+
+    - name: Build the application
+      run: cmake --build build
 
     - name: Run the application
-      run: ./vehicle_counter
+      run: ./build/vehicle_counter_opencv/src/vehicle_counter_opencv
 
     - name: Clean up
       run: |
-        rm vehicle_counter
+        rm -rf build
 
