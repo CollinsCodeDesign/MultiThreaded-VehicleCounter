@@ -12,24 +12,27 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v3
+      
+    # Cache vcpkg dependencies to speed up builds
+    - name: Cache vcpkg
+      uses: actions/cache@v3
+      with:
+        path: vcpkg_installed
+        key: ${{ runner.os }}-vcpkg-${{ hashFiles('vcpkg.json') }}
+        restore-keys: |
+          ${{ runner.os }}-vcpkg-
 
-    - name: Install dependencies (vcpkg)
+        # Install vcpkg
+    - name: Install vcpkg
       run: |
-        sudo apt update
-        sudo apt install -y curl zip unzip tar
         git clone https://github.com/microsoft/vcpkg.git
         ./vcpkg/bootstrap-vcpkg.sh
-        ./vcpkg/vcpkg install nlohmann-json opencv4
-    
-    - name: Set up OpenCV
-      run: sudo apt install -y libopencv-dev  # Ensure this is included for OpenCV installation
+        ./vcpkg/vcpkg install opencv nlohmann-json
 
-    - name: Configure the project with CMake
+    - name: Set up OpenCV and nlohmann/json with vcpkg
       run: |
         cmake -B build -S . -DCMAKE_TOOLCHAIN_FILE=./vcpkg/scripts/buildsystems/vcpkg.cmake
-
-    - name: Build the application
-      run: cmake --build build
+        cmake --build build
 
     - name: Run the application
       run: ./build/vehicle_counter_opencv/src/vehicle_counter_opencv
