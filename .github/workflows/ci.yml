@@ -25,7 +25,8 @@ jobs:
       run: |
         git clone https://github.com/microsoft/vcpkg.git
         ./vcpkg/bootstrap-vcpkg.sh
-        ./vcpkg/vcpkg install opencv nlohmann-json --no-at-spi2-core
+        ./vcpkg/vcpkg install opencv
+        ./vcpkg/vcpkg install nlohmann-json
 
     - name: Upload vcpkg cache
       uses: actions/upload-artifact@v3
