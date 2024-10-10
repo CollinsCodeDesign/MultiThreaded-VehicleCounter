@@ -1,0 +1,31 @@
+name: C++ Vehicle Counter CI
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Set up OpenCV
+      run: |
+        sudo apt update
+        sudo apt install -y libopencv-dev
+
+    - name: Compile the application
+      run: |
+        g++ -std=c++11 -I/usr/include/opencv4 -L/usr/lib/x86_64-linux-gnu -lopencv_core -lopencv_imgproc -lopencv_highgui -lopencv_videoio vehicle_counter_opencv/src/vehicle_counter_opencv.cpp -o vehicle_counter
+
+    - name: Run the application
+      run: ./vehicle_counter
+
+    - name: Clean up
+      run: |
+        rm vehicle_counter
+
